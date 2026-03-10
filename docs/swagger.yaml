@@ -1,6 +1,29 @@
 basePath: /
 definitions:
-  auth.LoginInput:
+  github_com_susapa_Inventory_API_internal_models.User:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      email:
+        type: string
+      id:
+        type: integer
+      updatedAt:
+        type: string
+      username:
+        type: string
+    type: object
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
+  internal_auth.LoginInput:
     properties:
       password:
         type: string
@@ -10,7 +33,7 @@ definitions:
     - password
     - username
     type: object
-  auth.RegisterInput:
+  internal_auth.RegisterInput:
     properties:
       email:
         type: string
@@ -38,6 +61,33 @@ info:
   title: Inventory API
   version: "1.0"
 paths:
+  /api/profile:
+    get:
+      description: Return the profile of the current authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_susapa_Inventory_API_internal_models.User'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - auth
   /auth/login:
     post:
       consumes:
@@ -49,7 +99,7 @@ paths:
         name: credentials
         required: true
         schema:
-          $ref: '#/definitions/auth.LoginInput'
+          $ref: '#/definitions/internal_auth.LoginInput'
       produces:
       - application/json
       responses:
@@ -74,6 +124,21 @@ paths:
       summary: Login a user
       tags:
       - auth
+  /auth/logout:
+    post:
+      description: Clear the authentication cookie
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Logout a user
+      tags:
+      - auth
   /auth/register:
     post:
       consumes:
@@ -85,7 +150,7 @@ paths:
         name: user
         required: true
         schema:
-          $ref: '#/definitions/auth.RegisterInput'
+          $ref: '#/definitions/internal_auth.RegisterInput'
       produces:
       - application/json
       responses:

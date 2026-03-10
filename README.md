@@ -41,3 +41,8 @@ A Go-based Inventory API with user authentication using JWT and Gin.
 - GORM (SQLite)
 - Go-JWT
 - Bcrypt
+
+## How to use:
+- Development: Run >>>>  $env:APP_ENV="development"; go run cmd/api/main.go (defaults to development).
+- QA: Run  >>>> $env:APP_ENV="qa"; go run cmd/api/main.go.
+- Production: Run >>>> $env:APP_ENV="production"; go run cmd/api/main.go.

@@ -2,12 +2,12 @@ package main
 
 import (
 	"log"
-	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	_ "github.com/susapa/Inventory_API/docs" // Swagger docs
 	"github.com/susapa/Inventory_API/internal/auth"
+	"github.com/susapa/Inventory_API/internal/config"
 	"github.com/susapa/Inventory_API/internal/database"
 	"github.com/susapa/Inventory_API/internal/middleware"
 	swaggerFiles "github.com/swaggo/files"
@@ -32,11 +32,10 @@ import (
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
+
 func main() {
-	// 0. Load .env
-	if err := godotenv.Load("../../.env"); err != nil {
-		log.Println("No .env file found, using system environment variables")
-	}
+	// 0. Load Configuration
+	config.LoadConfig()
 
 	// 1. Init DB
 	database.InitDB()
@@ -52,21 +51,24 @@ func main() {
 	{
 		authRoutes.POST("/register", auth.Register)
 		authRoutes.POST("/login", auth.Login)
+		authRoutes.POST("/logout", auth.Logout)
 	}
 
 	// 4. Protected Routes
 	protected := r.Group("/api")
 	protected.Use(middleware.AuthMiddleware())
 	{
-		protected.GET("/profile", func(c *gin.Context) {
-			userID, _ := c.Get("userID")
-			c.JSON(http.StatusOK, gin.H{"message": "Welcome!", "user_id": userID})
-		})
+		protected.GET("/profile", auth.GetProfile)
 	}
 
 	// 5. Run Server
-	log.Println("Server starting on :8080")
-	if err := r.Run(":8080"); err != nil {
+	port := os.Getenv("APP_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Server starting on :%s in %s mode", port, config.GetEnv())
+	if err := r.Run(":" + port); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -7,13 +7,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var SecretKey = []byte(getEnv("JWT_SECRET", "your-secret-key"))
-
-func getEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
+// GetSecretKey returns the JWT secret key from environment variables
+func GetSecretKey() []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		return []byte("your-default-secret-key-change-this")
 	}
-	return fallback
+	return []byte(secret)
 }
 
 func GenerateToken(userID uint) (string, error) {
@@ -22,5 +22,5 @@ func GenerateToken(userID uint) (string, error) {
 		"exp":     time.Now().Add(time.Hour * 24).Unix(), // 1 day
 	})
 
-	return token.SignedString(SecretKey)
+	return token.SignedString(GetSecretKey())
 }
