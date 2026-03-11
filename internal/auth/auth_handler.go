@@ -89,9 +89,10 @@ func Login(c *gin.Context) {
 	}
 
 	// Set JWT in Cookie
-	c.SetCookie("jwt", token, 3600*24, "/", "localhost", false, true)
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("jwt", token, 3600*24, "/", "", false, true)
 
-	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
+	c.JSON(http.StatusOK, gin.H{"message": "Login successful", "role": user.Role})
 }
 
 // Logout godoc
@@ -102,7 +103,8 @@ func Login(c *gin.Context) {
 // @Success      200  {object}  map[string]string
 // @Router       /auth/logout [post]
 func Logout(c *gin.Context) {
-	c.SetCookie("jwt", "", -1, "/", "localhost", false, true)
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("jwt", "", -1, "/", "", false, true)
 	c.JSON(http.StatusOK, gin.H{"message": "Logout successful"})
 }
 
