@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +19,7 @@ type RegisterInput struct {
 type LoginInput struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+	Remember bool   `json:"remember"`
 }
 
 // Register godoc
@@ -90,7 +92,14 @@ func Login(c *gin.Context) {
 
 	// Set JWT in Cookie
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("jwt", token, 3600*24, "/", "", false, true)
+
+	if input.Remember {
+		c.SetCookie("jwt", token, 3600*24*10, "/", "", false, true)
+		log.Printf("Remember: %v", input.Remember)
+		user.Remember = true
+	} else {
+		c.SetCookie("jwt", token, 3600*24, "/", "", false, true)
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Login successful", "role": user.Role})
 }

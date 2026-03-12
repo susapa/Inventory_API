@@ -8,4 +8,5 @@ type User struct {
 	Password string `gorm:"not null" json:"-"` // Hidden from JSON response
 	Email    string `gorm:"uniqueIndex" json:"email"`
 	Role     string `gorm:"not null;default:'user'" json:"role"`
+	Remember bool   `gorm:"not null;default:false" json:"remember"`
 }
