@@ -4,6 +4,11 @@ import (
 	"log"
 	"net/http"
 
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/susapa/Inventory_API/internal/database"
 	"github.com/susapa/Inventory_API/internal/models"
@@ -20,6 +25,15 @@ type LoginInput struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 	Remember bool   `json:"remember"`
+}
+
+type ForgotPasswordInput struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ResetPasswordInput struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
 
 // Register godoc
@@ -141,4 +155,119 @@ func GetProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, user)
+}
+
+// GenerateRandomToken generates a hex-encoded random string
+func GenerateRandomToken(length int) (string, error) {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+// ForgotPassword godoc
+// @Summary      Forgot password
+// @Description  Request a password reset link by providing email
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input  body      ForgotPasswordInput  true  "User Email"
+// @Success      200    {object}  map[string]string
+// @Failure      400    {object}  map[string]string
+// @Failure      404    {object}  map[string]string
+// @Failure      500    {object}  map[string]string
+// @Router       /auth/forgot-password [post]
+func ForgotPassword(c *gin.Context) {
+	var input ForgotPasswordInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User with this email not found"})
+		return
+	}
+
+	token, err := GenerateRandomToken(32)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate reset token"})
+		return
+	}
+
+	expiry := time.Now().Add(time.Hour) // Token expires in 1 hour
+	user.ResetToken = token
+	user.ResetTokenExpiresAt = &expiry
+
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save reset token"})
+		return
+	}
+
+	// Use the origin from where the request was made, fall back to current host if not present
+	origin := c.Request.Header.Get("Origin")
+	if origin == "" {
+		scheme := "http"
+		if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		origin = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	}
+
+	resetURL := fmt.Sprintf("%s/forgot-password?token=%s", origin, token)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "Password reset link generated",
+		"reset_url": resetURL,
+	})
+}
+
+// ResetPassword godoc
+// @Summary      Reset password
+// @Description  Reset user password using a valid token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input  body      ResetPasswordInput  true  "Reset Token and New Password"
+// @Success      200    {object}  map[string]string
+// @Failure      400    {object}  map[string]string
+// @Failure      401    {object}  map[string]string
+// @Failure      500    {object}  map[string]string
+// @Router       /auth/reset-password [post]
+func ResetPassword(c *gin.Context) {
+	var input ResetPasswordInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.Where("reset_token = ?", input.Token).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+		return
+	}
+
+	if user.ResetTokenExpiresAt == nil || user.ResetTokenExpiresAt.Before(time.Now()) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token has expired"})
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash new password"})
+		return
+	}
+
+	user.Password = string(hashedPassword)
+	user.ResetToken = ""           // Clear token
+	user.ResetTokenExpiresAt = nil // Clear expiry
+
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password has been reset successfully"})
 }

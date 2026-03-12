@@ -62,6 +62,8 @@ func main() {
 		authRoutes.POST("/register", auth.Register)
 		authRoutes.POST("/login", auth.Login)
 		authRoutes.POST("/logout", auth.Logout)
+		authRoutes.POST("/forgot-password", auth.ForgotPassword)
+		authRoutes.POST("/reset-password", auth.ResetPassword)
 	}
 
 	// 4. Protected Routes

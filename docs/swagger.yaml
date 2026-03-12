@@ -10,6 +10,10 @@ definitions:
         type: string
       id:
         type: integer
+      remember:
+        type: boolean
+      role:
+        type: string
       updatedAt:
         type: string
       username:
@@ -23,10 +27,19 @@ definitions:
         description: Valid is true if Time is not NULL
         type: boolean
     type: object
+  internal_auth.ForgotPasswordInput:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
   internal_auth.LoginInput:
     properties:
       password:
         type: string
+      remember:
+        type: boolean
       username:
         type: string
     required:
@@ -46,6 +59,17 @@ definitions:
     - email
     - password
     - username
+    type: object
+  internal_auth.ResetPasswordInput:
+    properties:
+      new_password:
+        minLength: 6
+        type: string
+      token:
+        type: string
+    required:
+    - new_password
+    - token
     type: object
 host: localhost:8080
 info:
@@ -86,6 +110,48 @@ paths:
       security:
       - BearerAuth: []
       summary: Get user profile
+      tags:
+      - auth
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Request a password reset link by providing email
+      parameters:
+      - description: User Email
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.ForgotPasswordInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Forgot password
       tags:
       - auth
   /auth/login:
@@ -173,6 +239,48 @@ paths:
               type: string
             type: object
       summary: Register a new user
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Reset user password using a valid token
+      parameters:
+      - description: Reset Token and New Password
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.ResetPasswordInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reset password
       tags:
       - auth
 securityDefinitions:

@@ -1,6 +1,10 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type User struct {
 	gorm.Model
@@ -9,4 +13,6 @@ type User struct {
 	Email    string `gorm:"uniqueIndex" json:"email"`
 	Role     string `gorm:"not null;default:'user'" json:"role"`
 	Remember bool   `gorm:"not null;default:false" json:"remember"`
+	ResetToken          string     `json:"-"`
+	ResetTokenExpiresAt *time.Time `json:"-"`
 }
