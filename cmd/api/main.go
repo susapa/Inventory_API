@@ -10,6 +10,7 @@ import (
 	"github.com/susapa/Inventory_API/internal/auth"
 	"github.com/susapa/Inventory_API/internal/config"
 	"github.com/susapa/Inventory_API/internal/database"
+	"github.com/susapa/Inventory_API/internal/logger"
 	"github.com/susapa/Inventory_API/internal/middleware"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -41,8 +42,14 @@ func main() {
 	// 1. Init DB
 	database.InitDB()
 
-	// 2. Setup Gin
+	// 2. Init Elasticsearch for Logging
+	logger.InitElasticsearch()
+
+	// 3. Setup Gin
 	r := gin.Default()
+
+	// Add Elasticsearch Logger Middleware
+	r.Use(logger.ElasticLoggerMiddleware())
 
 	// CORS configuration
 	r.Use(cors.New(cors.Config{

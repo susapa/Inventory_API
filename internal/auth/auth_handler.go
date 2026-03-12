@@ -62,10 +62,12 @@ func Register(c *gin.Context) {
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
+		log.Printf("[AUTH] Registration failed for username %s: %v", input.Username, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "User already exists or other error"})
 		return
 	}
 
+	log.Printf("[AUTH] User registered: %s (%s)", input.Username, input.Email)
 	c.JSON(http.StatusOK, gin.H{"message": "Registration successful"})
 }
 
@@ -109,12 +111,12 @@ func Login(c *gin.Context) {
 
 	if input.Remember {
 		c.SetCookie("jwt", token, 3600*24*10, "/", "", false, true)
-		log.Printf("Remember: %v", input.Remember)
 		user.Remember = true
 	} else {
 		c.SetCookie("jwt", token, 3600*24, "/", "", false, true)
 	}
 
+	log.Printf("[AUTH] User logged in: %s", user.Username)
 	c.JSON(http.StatusOK, gin.H{"message": "Login successful", "role": user.Role})
 }
 
@@ -128,6 +130,7 @@ func Login(c *gin.Context) {
 func Logout(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("jwt", "", -1, "/", "", false, true)
+	log.Printf("[AUTH] User logged out")
 	c.JSON(http.StatusOK, gin.H{"message": "Logout successful"})
 }
 
@@ -218,6 +221,8 @@ func ForgotPassword(c *gin.Context) {
 
 	resetURL := fmt.Sprintf("%s/forgot-password?token=%s", origin, token)
 
+	log.Printf("[AUTH] Password reset requested for email: %s. Link: %s", input.Email, resetURL)
+
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "Password reset link generated",
 		"reset_url": resetURL,
@@ -265,9 +270,11 @@ func ResetPassword(c *gin.Context) {
 	user.ResetTokenExpiresAt = nil // Clear expiry
 
 	if err := database.DB.Save(&user).Error; err != nil {
+		log.Printf("[AUTH] Failed to update password for user %s: %v", user.Username, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
 		return
 	}
 
+	log.Printf("[AUTH] Password reset successful for user: %s", user.Username)
 	c.JSON(http.StatusOK, gin.H{"message": "Password has been reset successfully"})
 }
